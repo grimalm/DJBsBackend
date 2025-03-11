@@ -1,0 +1,202 @@
+﻿@page "/weatherdata"
+@using Back_end.Shared
+@using Back_end.Client.Services
+@inject HttpClient Http
+@inject UserSession userSession
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager navigationManager
+
+<PageTitle>Current Weather</PageTitle>
+
+<style>
+    body {
+        background-image: url('/images/genericweatherbackground.png');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    body, h1, h2, h3, h4, h5, h6, p, table, th, td {
+        background-color: white;
+    }
+</style>
+
+<h1>Current Weather</h1>
+
+<p>Here you will see the most recent weather data.</p>
+
+<div class="form-group">
+    <label>Enter Latitude:</label>
+    <input @bind="latitude" type="number" step="0.001" class="form-control" />
+</div>
+<div class="form-group">
+    <label>Enter Longitude:</label>
+    <input @bind="longitude" type="number" step="0.001" class="form-control" />
+</div>
+<button class="btn btn-primary mt-3" @onclick="FetchWeatherData">Get Weather Data</button>
+
+@if (currentWeather == null)
+{
+    <p><em>Enter coordinates first</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Humidity (%)</th>
+                <th>Rain (mm)</th>
+                <th>Pressure (mBar)</th>
+                <th>Windspeed (km/h)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@currentWeather.current!.time</td>
+                <td>@currentWeather.current.temperature_2m</td>
+                <td>@currentWeather.current.relative_humidity_2m</td>
+                <td>@currentWeather.current.rain</td>
+                <td>@currentWeather.current.surface_pressure</td>
+                <td>@currentWeather.current.wind_speed_10m</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Manual Override Data</h2>
+
+    @if (overrideWeather != null)
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Temp. (C)</th>
+                    <th>Humidity (%)</th>
+                    <th>Rain (mm)</th>
+                    <th>Pressure (Pa)</th>
+                    <th>Windspeed (km/h)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>@DateTime.Now.ToString("dd-MM-yyyy h:mm:ss tt")</td>
+                    <td>@overrideWeather.temperature_2m</td>
+                    <td>@overrideWeather.relative_humidity_2m</td>
+                    <td>@overrideWeather.rain</td>
+                    <td>@overrideWeather.surface_pressure</td>
+                    <td>@overrideWeather.wind_speed_10m</td>
+                </tr>
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No manual override data available.</p>
+    }
+
+    <h3>Enter Manual Override Data</h3>
+    <EditForm Model="manualOverrideData" OnValidSubmit="HandleManualOverrideSubmit">
+        <div class="form-group">
+            <label>Temperature (C):</label>
+            <input @bind="manualOverrideData.temperature_2m" type="number" step="0.1" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label>Humidity (%):</label>
+            <input @bind="manualOverrideData.relative_humidity_2m" type="number" step="1" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label>Rain (mm):</label>
+            <input @bind="manualOverrideData.rain" type="number" step="0.1" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label>Pressure (Pa):</label>
+            <input @bind="manualOverrideData.surface_pressure" type="number" step="1" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label>Windspeed (km/h):</label>
+            <input @bind="manualOverrideData.wind_speed_10m" type="number" step="0.1" class="form-control" />
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Submit Override</button>
+    </EditForm>
+
+    <p style="color: @(isErrorMessage ? "red" : "black")">@responseMessage</p>
+}
+
+@code {
+    private WeatherApiData? currentWeather;
+    private CustomWeatherData manualOverrideData = new();
+    private CustomWeatherData? overrideWeather;
+    private string responseMessage = string.Empty;
+    private bool isErrorMessage = false;
+    private double latitude;
+    private double longitude;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (userSession.IsLoggedIn())
+        {
+            currentWeather = await localStorage.GetItemAsync<WeatherApiData>($"weatherData");
+            overrideWeather = await localStorage.GetItemAsync<CustomWeatherData>($"overrideWeatherData");
+        }
+        else
+        {
+            navigationManager.NavigateTo("/loginregister");
+        }
+    }
+
+    private async Task FetchWeatherData()
+    {
+        if (latitude == 0 || longitude == 0)
+        {
+            responseMessage = "Please fill in all fields for manual override data.";
+            isErrorMessage = true;
+            return;
+        }
+
+        currentWeather = await Http.GetFromJsonAsync<WeatherApiData>($"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,relative_humidity_2m,rain,surface_pressure,wind_speed_10m&forecast_days=1&models=ukmo_seamless");
+
+        await localStorage.SetItemAsync($"weatherData", currentWeather);
+        overrideWeather = null;
+        await localStorage.RemoveItemAsync($"overrideWeatherData");
+    }
+
+    private async void HandleManualOverrideSubmit()
+    {
+        if (manualOverrideData.temperature_2m == 0 &&
+            manualOverrideData.relative_humidity_2m == 0 &&
+            manualOverrideData.rain == 0 &&
+            manualOverrideData.surface_pressure == 0 &&
+            manualOverrideData.wind_speed_10m == 0)
+        {
+            responseMessage = "Please fill in all fields for manual override data.";
+            isErrorMessage = true;
+        }
+        else
+        {
+            overrideWeather = new CustomWeatherData
+                {
+                    temperature_2m = manualOverrideData.temperature_2m,
+                    relative_humidity_2m = manualOverrideData.relative_humidity_2m,
+                    rain = manualOverrideData.rain,
+                    surface_pressure = manualOverrideData.surface_pressure,
+                    wind_speed_10m = manualOverrideData.wind_speed_10m
+                };
+
+            await localStorage.SetItemAsync($"overrideWeatherData", overrideWeather);
+
+            responseMessage = "Manual override data submitted successfully.";
+            isErrorMessage = false;
+        }
+    }
+
+    private class CustomWeatherData
+    {
+        public double temperature_2m { get; set; }
+        public double relative_humidity_2m { get; set; }
+        public double rain { get; set; }
+        public double surface_pressure { get; set; }
+        public double wind_speed_10m { get; set; }
+    }
+}

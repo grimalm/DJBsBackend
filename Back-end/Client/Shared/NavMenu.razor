@@ -1,0 +1,82 @@
+﻿@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager navigationManager
+@using Back_end.Client.Services
+@inject UserSession userSession
+
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Virtual Caddy</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        @if (!userSession.IsLoggedIn())
+        {
+            <NavLink class="nav-link" href="/loginregister">
+                <span class="oi oi-account-login" aria-hidden="true"></span> Login/Register
+            </NavLink>
+
+        }
+        else
+        {
+            <div class="nav-item px-3">
+                <button class="btn btn-danger" @onclick="userSession.Logout">Logout</button>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/instructions">Instructions</NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/weatherdata">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Weather Data
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/theusers">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Users
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/survey">Survey</NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/userclubs">ClubData</NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/suggestions">Suggestions</NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/scorecard">Digital Scorecard</NavLink>
+            </div>
+        }
+        
+    </nav>
+</div>
+
+
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await userSession.SetUserId();
+    }
+}

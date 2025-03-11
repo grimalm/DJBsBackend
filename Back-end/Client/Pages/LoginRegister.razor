@@ -1,0 +1,152 @@
+﻿@page "/loginregister"
+@using Back_end.Client.Services
+@inject HttpClient Http
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject UserSession userSession
+@using Back_end.Shared
+
+<style>
+    body {
+        background-image: url('/images/golf-background.png');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+</style>
+
+<h3>Login and Registration</h3>
+
+<div class="btn-group" role="group" aria-label="Basic example">
+    <button class="btn @(isLoginVisible ? "btn-primary" : "btn-secondary")" @onclick="ShowLogin">Login</button>
+    <button class="btn @(!isLoginVisible ? "btn-primary" : "btn-secondary")" @onclick="ShowRegister">Register</button>
+</div>
+
+@if (isLoginVisible)
+{
+    <h4>Login</h4>
+
+    <div class="form-group">
+        <label for="loginUsername">Username</label>
+        <input @bind="loginUsername" id="loginUsername" class="form-control" placeholder="Enter Username"/>
+    </div>
+
+    <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" @bind="loginPassword" id="loginPassword" class="form-control" placeholder="Enter Password" />
+    </div>
+
+    <button class="btn btn-primary" @onclick="LoginUser">Login</button>
+
+    <p style="color: @(loginMessage.Contains("required") || loginMessage.Contains("Incorrect") ? "red" : "black")">@loginMessage</p>
+
+}
+else
+{
+    <h4>Register</h4>
+    <form method="post" @onsubmit="RegisterUser">
+        <div class="form-group">
+            <label for="registerUsername">Username</label>
+            <input @bind="registerUsername" id="registerUsername" class="form-control" placeholder="Enter Username" />
+        </div>
+
+        <div class="form-group">
+            <label for="registerPassword">Password</label>
+            <input type="password" @bind="registerPassword" id="registerPassword" class="form-control" placeholder="Enter Password" />
+        </div>
+
+        <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input type="password" @bind="confirmPassword" id="confirmPassword" class="form-control" placeholder="Confirm Password" />
+        </div>
+
+        <button class="btn btn-secondary" type = "submit" >Register</button>
+    </form>
+    <p style="color: @(registerMessage.Contains("not match") ? "red" : "black")">@registerMessage</p>
+
+}
+
+@code {
+    private bool isLoginVisible = true;
+
+    private string loginUsername = string.Empty;
+    private string loginPassword = string.Empty;
+    private string loginMessage = string.Empty;
+
+    private string registerUsername = string.Empty;
+    private string registerPassword = string.Empty;
+    private string confirmPassword = string.Empty;
+    private string registerMessage = string.Empty;
+
+    private void ShowLogin()
+    {
+        isLoginVisible = true;
+    }
+
+    private void ShowRegister()
+    {
+        isLoginVisible = false;
+    }
+
+    private async Task LoginUser()
+    {
+
+        if (string.IsNullOrEmpty(loginUsername) || string.IsNullOrEmpty(loginPassword))
+        {
+            loginMessage = "Both fields are required!";
+            return;
+        }
+        else
+        {
+            UserData userLogin = new(loginUsername, loginPassword);
+
+            HttpResponseMessage response = await Http.PostAsJsonAsync("Users/checklogin", userLogin);
+
+            int userId = await response.Content.ReadFromJsonAsync<int>();
+
+
+            if (userId == -1)
+            {
+                loginMessage = "Incorrect username or password";
+                return;
+            }
+
+            await userSession.Login(userId);
+
+            loginMessage = $"Welcome, {loginUsername}, {userId}!";
+
+        }
+
+    }
+
+    private async Task RegisterUser()
+    {
+        if (string.IsNullOrEmpty(registerUsername) || string.IsNullOrEmpty(registerPassword) || string.IsNullOrEmpty(confirmPassword))
+        {
+            registerMessage = "All fields are required!";
+            return;
+        }
+
+        if (registerPassword != confirmPassword)
+        {
+            registerMessage = "Passwords do not match!";
+            return;
+        }
+
+        HttpResponseMessage response = await Http.PostAsJsonAsync("Users/checkUsernameTaken", registerUsername);
+
+        bool usernameIsTaken = await response.Content.ReadFromJsonAsync<bool>();
+
+        if (usernameIsTaken)
+        {
+            registerMessage = "Username already taken!";
+            return;
+        }
+
+        registerMessage = $"User {registerUsername} registered successfully!";
+
+        UserData UserRegistration = new(registerUsername, registerPassword);
+
+        await Http.PostAsJsonAsync("Users/createuser", UserRegistration);
+
+    }
+}

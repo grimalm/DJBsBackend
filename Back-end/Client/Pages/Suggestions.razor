@@ -1,0 +1,186 @@
+﻿@page "/suggestions"
+@using Back_end.Shared
+@using Back_end.Client.Services
+@inject HttpClient Http
+@inject UserSession userSession
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager navigationManager
+
+<h3>Suggestions</h3>
+
+<div class="form-group">
+    <label for="distance">What is the distance to the hole?</label>
+    <input @bind="distance" id="distance" type="number" step="1" class="form-control" placeholder="Enter Distance" />
+</div>
+
+@if (!loading)
+{
+    if (isErrorMessage)
+    {
+        <button class="btn btn-primary mt-3" disabled>Submit</button>
+    }
+    else
+    {
+        <button class="btn btn-primary mt-3" @onclick="SubmitForm">Submit</button>
+    }
+}
+else
+{
+    <button class="btn btn-primary mt-3" type="button" disabled>
+        <span class="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+        Loading...
+    </button>
+}
+
+@if (overrideWeather == null) 
+{
+    @if (currentWeather == null)
+    {
+        <p><em>Enter coordinates first</em></p>
+    }
+    else
+    {
+        <p><em>Using live weather data.</em></p>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Temp. (C)</th>
+                    <th>Humidity (%)</th>
+                    <th>Rain (mm)</th>
+                    <th>Pressure (mBar)</th>
+                    <th>Windspeed (km/h)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>@currentWeather.current!.time</td>
+                    <td>@currentWeather.current.temperature_2m</td>
+                    <td>@currentWeather.current.relative_humidity_2m</td>
+                    <td>@currentWeather.current.rain</td>
+                    <td>@currentWeather.current.surface_pressure</td>
+                    <td>@currentWeather.current.wind_speed_10m</td>
+                </tr>
+            </tbody>
+        </table>
+    }
+
+}
+else
+{
+    <p><em>Using manual override data.</em></p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Humidity (%)</th>
+                <th>Rain (mm)</th>
+                <th>Pressure (mBar)</th>
+                <th>Windspeed (km/h)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@DateTime.Now.ToString("dd-MM-yyyy h:mm:ss tt")</td>
+                <td>@overrideWeather.temperature_2m</td>
+                <td>@overrideWeather.relative_humidity_2m</td>
+                <td>@overrideWeather.rain</td>
+                <td>@overrideWeather.surface_pressure</td>
+                <td>@overrideWeather.wind_speed_10m</td>
+            </tr>
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p style="color: @(isErrorMessage ? "red" : "black")">@((MarkupString)message)</p>
+}
+
+
+@code {
+    private WeatherApiData? currentWeather;
+    private CustomWeatherData? overrideWeather;
+    private ChatbotResponse? suggestion;
+    public double distance;
+    public string? message;
+    public bool isErrorMessage;
+    public string? clubs;
+    public bool loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (userSession.IsLoggedIn())
+        {
+            overrideWeather = await localStorage.GetItemAsync<CustomWeatherData>($"overrideWeatherData");
+            currentWeather = await localStorage.GetItemAsync<WeatherApiData>($"weatherData");
+
+            List<GolfClub> response = (await Http.GetFromJsonAsync<List<GolfClub>>($"Users/retrieveclubs?userId={userSession.UserId}"))!;
+
+            clubs = "";
+
+            foreach (GolfClub club in response)
+            {
+                clubs += club.Name;
+                clubs += ":";
+                clubs += club.AverageDistance;
+                clubs += ",";
+            }
+
+            if (clubs.Length == 0)
+            {
+                message += "Please choose some clubs first";
+                isErrorMessage = true;
+            }
+            else 
+            { 
+                clubs = clubs.Substring(0, clubs.Length - 1); 
+            }
+        }
+        else
+        {
+            navigationManager.NavigateTo("/loginregister");
+        }
+
+    }
+
+    private async Task SubmitForm()
+    {
+        loading = true;
+        isErrorMessage = false;
+
+        if (distance == 0)
+        {
+            message += "Please enter a distance.<br />";
+            isErrorMessage = true;
+        }
+
+        if (isErrorMessage) 
+        { 
+            return; 
+        }
+        if (overrideWeather == null) //put hard coded links in appsettings.json
+        {
+            suggestion = await Http.GetFromJsonAsync<ChatbotResponse>($"https://aged-tree-68d2.mvg-grimaldi.workers.dev/?distanceToTarget={distance}&rain={currentWeather!.current!.rain}&windSpeed={currentWeather.current.wind_speed_10m}&humidity={currentWeather.current.relative_humidity_2m}&pressure={currentWeather.current.surface_pressure}&clubs={clubs}");
+        }
+        else
+        {
+            suggestion = await Http.GetFromJsonAsync<ChatbotResponse>($"https://aged-tree-68d2.mvg-grimaldi.workers.dev/?distanceToTarget={distance}&rain={overrideWeather.rain}&windSpeed={overrideWeather.wind_speed_10m}&humidity={overrideWeather.relative_humidity_2m}&pressure={overrideWeather.surface_pressure}&clubs={clubs}");
+        }
+        message += suggestion!.response.response;
+        loading = false;
+    }
+
+    private class CustomWeatherData
+    {
+        public double temperature_2m { get; set; }
+        public double relative_humidity_2m { get; set; }
+        public double rain { get; set; }
+        public double surface_pressure { get; set; }
+        public double wind_speed_10m { get; set; }
+    }
+}
+ 

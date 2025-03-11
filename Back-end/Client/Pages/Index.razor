@@ -1,0 +1,73 @@
+﻿@page "/"
+@inject NavigationManager navigationManager
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello!</h1>
+
+Welcome to your Virtual Caddy.
+
+<div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <button class="btn btn-secondary" @onclick="NavigateToInstructions">Instructions</button>
+        <button class="btn btn-warning" @onclick="NavigateToWeatherData">Weather Data</button>
+        <button class="btn btn-info" @onclick="NavigateToUsers">Users</button>
+        <button class="btn btn-primary" @onclick="NavigateToSurvey">Survey</button>
+        <button class="btn btn-success" @onclick="NavigateToClubData">ClubData</button>
+        <button class="btn btn-danger" @onclick="NavigateToSuggestions">Suggestions</button>
+        <button class="btn btn-light" @onclick="NavigateToScorecard">Scorecard</button>
+    </div>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void NavigateToCounter()
+    {
+        navigationManager.NavigateTo("/counter");
+    }
+
+    private void NavigateToWeatherData()
+    {
+        navigationManager.NavigateTo("/weatherdata");
+    }
+
+    private void NavigateToUsers()
+    {
+        navigationManager.NavigateTo("/theusers");
+    }
+
+    private void NavigateToSurvey()
+    {
+        navigationManager.NavigateTo("/survey");
+    }
+
+    private void NavigateToClubData()
+    {
+        navigationManager.NavigateTo("/userclubs");
+    }
+
+    private void NavigateToSuggestions()
+    {
+        navigationManager.NavigateTo("/suggestions");
+    }
+
+    private void NavigateToInstructions()
+    {
+        navigationManager.NavigateTo("/instructions");
+    }
+
+    private void NavigateToScorecard()
+    {
+        navigationManager.NavigateTo("/scorecard");
+    }
+}
+
+

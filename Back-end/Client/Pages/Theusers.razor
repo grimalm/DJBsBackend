@@ -1,0 +1,75 @@
+﻿@page "/theusers"
+@using Back_end.Shared
+@inject HttpClient Http
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager navigationManager
+@using Back_end.Client.Services
+@inject UserSession userSession
+
+<PageTitle>Users</PageTitle>
+
+<style>
+    body {
+        background-image: url('/images/golf-background.png');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    body, h1, h2, h3, h4, h5, h6, p, table, th, td {
+        background-color: white !important;
+    }
+</style>
+
+<h1>Users</h1>
+
+<p>This component demonstrates fetching User data from the server.</p>
+
+@if (users == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>User ID</th>
+                <th>Username</th>
+                <th>Password</th>
+                <th>Handicap</th>
+
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.UserId</td>
+                    <td>@user.UserName</td>
+                    <td>@user.Password</td>
+                    <td>@user.Handicap</td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private User[]? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (userSession.IsLoggedIn())
+        {
+            users = await Http.GetFromJsonAsync<User[]>("Users");
+        }
+        else
+        {
+            navigationManager.NavigateTo("/loginregister");
+        }
+    }
+
+    
+}

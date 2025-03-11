@@ -1,0 +1,32 @@
+﻿@page "/instructions"
+@using Back_end.Client.Services
+@inject HttpClient Http
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject UserSession userSession
+@inject NavigationManager navigationManager
+@using Back_end.Shared
+
+
+<h3>Instructions for using this application:</h3>
+
+
+<ol class="border">
+ <li>Navigate to the "Survey" page to enter your handicap and club stock yardages.<br/></li>
+ <li>Navigate to the "Weather Data" page to enter your coordinates and retrieve the local weather data or enter your own.<br/></li>
+ <li>Navigate to the "Suggestions" page and enter your distance from the hole.</li>
+ <li>Enjoy a custom recommendation on which club to hit and how hard to hit it!</li>
+  <li>When you are done playing your round, fill in the digital scorecard to permanently save your scores.
+      You can retrieve a certain scorecard from any particular session or day afterwards.
+  </li>
+</ol>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        if (!userSession.IsLoggedIn())
+        {
+            navigationManager.NavigateTo("/loginregister");
+        }
+
+    }
+}

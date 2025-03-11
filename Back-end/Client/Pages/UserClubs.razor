@@ -1,0 +1,65 @@
+﻿@page "/userclubs"
+@using Back_end.Shared
+@using Back_end.Client.Services
+@inject HttpClient Http
+@inject UserSession userSession
+@inject NavigationManager navigationManager
+
+
+<h3>Welcome User @userSession.UserId!</h3>
+<p>Your Selected Golf Clubs</p>
+
+@if (clubs == null)
+{
+    <p>Loading...</p>
+}
+else if (clubs.Count == 0)
+{
+    <p>No clubs have been selected yet. Go to the survey page or log in to add your clubs.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Club Name</th>
+                <th>Average Distance (yards)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var club in clubs)
+            {
+                <tr>
+                    <td>@club.Name</td>
+                    <td>@club.AverageDistance</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code 
+{
+    private List<GolfClub>? clubs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (userSession.IsLoggedIn())
+        {
+            List<GolfClub> response = await Http.GetFromJsonAsync<List<GolfClub>>($"Users/retrieveclubs?userId={userSession.UserId}");
+
+            if (response != null)
+            {
+                clubs = response;
+            }
+            else
+            {
+                clubs = new List<GolfClub>();
+            }
+        }
+        else
+        {
+            navigationManager.NavigateTo("/loginregister");
+        }
+    }
+}

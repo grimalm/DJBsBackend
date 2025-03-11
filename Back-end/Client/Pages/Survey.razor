@@ -1,0 +1,132 @@
+﻿@page "/survey"
+@using Back_end.Shared
+@using Back_end.Client.Services
+@inject HttpClient Http
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject UserSession userSession
+@inject NavigationManager navigationManager
+
+<h3>Survey</h3>
+
+<div class="form-group">
+    <label for="handicap">What is your handicap?</label>
+    <input @bind="handicap" id="handicap" type="number" step="0.5" class="form-control" placeholder="Enter your handicap" />
+</div>
+
+<h4>Select the golf clubs you use:</h4>
+
+@foreach (var club in golfClubs)
+{
+    <div>
+        <input type="checkbox" @bind="club.IsSelected" @bind:event="onchange" />
+        <label>@club.Name</label>
+
+        @if (club.IsSelected)
+        {
+            <div class="form-group mt-1">
+                <label>Average distance for @club.Name (yards):</label>
+                <input @bind="club.AverageDistance" type="number" step="1" class="form-control" placeholder="Enter distance in yards" />
+            </div>
+        }
+    </div>
+}
+
+<button class="btn btn-primary mt-3" @onclick="SubmitForm">Submit</button>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p style="color: @(isErrorMessage ? "red" : "black")">@((MarkupString)message)</p>
+}
+
+@code {
+    public double handicap;
+    public string? message;
+    public bool isErrorMessage;
+    public List<GolfClub> golfClubs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (userSession.IsLoggedIn())
+        {
+            golfClubs = new List<GolfClub>
+        {
+            new GolfClub { Name = "Driver" },
+            new GolfClub { Name = "3 Wood" },
+            new GolfClub { Name = "5 Wood" },
+            new GolfClub { Name = "2 Iron" },
+            new GolfClub { Name = "3 Iron" },
+            new GolfClub { Name = "4 Iron" },
+            new GolfClub { Name = "5 Iron" },
+            new GolfClub { Name = "6 Iron" },
+            new GolfClub { Name = "7 Iron" },
+            new GolfClub { Name = "8 Iron" },
+            new GolfClub { Name = "9 Iron" },
+            new GolfClub { Name = "Pitching Wedge" },
+            new GolfClub { Name = "Gap Wedge" },
+            new GolfClub { Name = "Sand Wedge" },
+            new GolfClub { Name = "Lob Wedge" },
+            new GolfClub { Name = "Putter" }
+        };
+
+            List<GolfClub> existingClubs = (await Http.GetFromJsonAsync<List<GolfClub>>($"Users/retrieveclubs?userId={userSession.UserId}"))!;
+
+            foreach (var club in existingClubs)
+            {
+                foreach (var Club in golfClubs)
+                {
+                    if (Club.Name == club.Name)
+                    {
+                        Club.IsSelected = club.IsSelected;
+                        Club.AverageDistance = club.AverageDistance;
+                    }
+                }
+            }
+
+            handicap = (await Http.GetFromJsonAsync<double>($"Users/gethandicap?userId={userSession.UserId}"))!;
+        }
+        else
+        {
+            navigationManager.NavigateTo("/loginregister");
+        }
+    }
+
+    private async Task SubmitForm()
+    {
+        message = string.Empty;
+        isErrorMessage = false;
+
+        if (handicap == 99)
+        {
+            message += "Please enter your handicap.<br />";
+            isErrorMessage = true;
+        }
+
+        foreach (var club in golfClubs.Where(c => c.IsSelected))
+        {
+            if (club.AverageDistance == 0)
+            {
+                message += $"Please enter the average distance for {club.Name}.<br />";
+                isErrorMessage = true;
+            }
+        }
+
+        if (isErrorMessage) return;
+
+        int userId = userSession.UserId;
+
+
+        ClubData clubs = new(handicap, golfClubs, userId);
+
+        var response = await Http.PostAsJsonAsync("Users/setclubs", clubs);
+        if (response.IsSuccessStatusCode)
+        {
+            message = "Form submitted successfully!";
+        }
+        else
+        {
+            message = "Error submitting form.";
+            isErrorMessage = true;
+        }
+    }
+}
+
